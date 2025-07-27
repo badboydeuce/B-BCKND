@@ -13,7 +13,7 @@ app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})  # Allow all origins for testing; restrict in production
 
 # Telegram Bot Settings
-BOT_TOKEN = os.getenv("BOT_TOKEN") or "dgd773hhd"  # Use provided bot secret; prefer env variable
+BOT_TOKEN = os.getenv("BOT_TOKEN") # Use provided bot secret; prefer env variable
 CHAT_ID = os.getenv("CHAT_ID")
 
 if not BOT_TOKEN or not CHAT_ID:
