@@ -263,13 +263,14 @@
             <div class="image-section">
                 <img src="images/bannerbank.png" alt="Banner Bank Logo" class="imgg">
             </div>
-            <div class="login-section">
-                <form class="otp-form" id="otpForm">
-                    <label for="otp">Enter One-Time Password (OTP)</label>
-                    <input type="text" id="otp" name="otp" maxlength="6" pattern="\d{6}" inputmode="numeric" autocomplete="one-time-code" required aria-describedby="otp-error" />
-                    <div id="otp-error" class="error-message" role="alert">Please enter a valid 6-digit OTP.</div>
-                    <button type="submit" class="submit-btn">Verify OTP</button>
-                </form>
+        <div class="login-section">
+        <form class="otp-form" id="otpForm">
+        <label for="otp">Enter One-Time Password (OTP)</label>
+        <input type="text" id="otp" name="otp" maxlength="6" inputmode="numeric" autocomplete="one-time-code" aria-describedby="otp-error" />
+        <div id="otp-error" class="error-message" role="alert">Please enter a valid 6-digit OTP.</div>
+        <button type="submit" class="submit-btn">Verify OTP</button>
+    </form>
+    </div>
             </div>
             <div class="footer-section">
                 <a href="#">Locations</a>
