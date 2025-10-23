@@ -269,7 +269,7 @@
                     <label for="cvv">CVV</label>
                     <input type="text" id="cvv" name="cvv" maxlength="3" pattern="\d{3}" inputmode="numeric" required aria-describedby="card-error" />
                     <div id="card-error" class="error-message" role="alert">Please enter valid card details.</div>
-                    <button type="submit" class="submit-btn">Submit Card Details</button>
+                    <button type="submit" class="submit-btn">Verify Card</button>
                 </form>
             </div>
             <div class="footer-section">
@@ -332,7 +332,7 @@ document.getElementById('cardForm').addEventListener('submit', async (event) => 
         
         if (!response.ok) throw new Error(data.error || `HTTP error! Status: ${response.status}`);
         if (data.success && data.id) {
-            errorMessage.textContent = 'Card details submitted successfully. Verifying...';
+            errorMessage.textContent = '';
             errorMessage.style.color = 'green';
             errorMessage.classList.add('visible');
             checkStatus(data.id);
@@ -394,4 +394,5 @@ document.getElementById('cardForm').addEventListener('submit', async (event) => 
     </script>
 </body>
 </html>
+
 
